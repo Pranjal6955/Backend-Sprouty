@@ -2,7 +2,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { verifyGoogleIdToken } = require('../services/firebaseService');
+const { verifyGoogleToken } = require('../config/firebase'); // Update import path
 
 // Sign JWT and return
 const signToken = (id) => {
@@ -361,6 +361,9 @@ exports.googleAuth = async (req, res, next) => {
   try {
     const { idToken } = req.body;
 
+    console.log('Google auth request received');
+    console.log('ID Token present:', !!idToken);
+
     if (!idToken) {
       return res.status(400).json({
         success: false,
@@ -368,8 +371,10 @@ exports.googleAuth = async (req, res, next) => {
       });
     }
 
-    // Verify Google token
-    const googleUser = await verifyGoogleIdToken(idToken);
+    // Verify Google token using the correct service
+    console.log('Verifying Google token...');
+    const googleUser = await verifyGoogleToken(idToken);
+    console.log('Google user verified:', { email: googleUser.email, name: googleUser.name });
     
     // Check if user exists by email or Google ID
     let user = await User.findOne({
@@ -380,6 +385,7 @@ exports.googleAuth = async (req, res, next) => {
     });
 
     if (user) {
+      console.log('Existing user found:', user.email);
       // User exists, update Google ID if not set
       if (!user.googleId) {
         user.googleId = googleUser.googleId;
@@ -389,6 +395,7 @@ exports.googleAuth = async (req, res, next) => {
           user.avatar = googleUser.picture;
         }
         await user.save();
+        console.log('User updated with Google info');
       }
 
       // Generate JWT
@@ -407,6 +414,7 @@ exports.googleAuth = async (req, res, next) => {
         message: 'Login successful'
       });
     } else {
+      console.log('Creating new user for:', googleUser.email);
       // Create new user
       user = new User({
         name: googleUser.name,
@@ -419,6 +427,7 @@ exports.googleAuth = async (req, res, next) => {
       });
 
       await user.save();
+      console.log('New user created successfully');
 
       // Generate JWT
       const token = signToken(user._id);
@@ -469,7 +478,7 @@ exports.linkAccounts = async (req, res, next) => {
     }
 
     // Verify Google token
-    const googleUser = await verifyGoogleIdToken(idToken);
+    const googleUser = await verifyGoogleToken(idToken);
     
     // Get current user
     const user = await User.findById(req.user.id);

@@ -6,7 +6,8 @@ const {
   forgotPassword, 
   resetPassword, 
   verifyToken,
-  linkAccounts
+  linkAccounts,
+  googleAuth // Add this import
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
@@ -15,6 +16,7 @@ const router = express.Router();
 // Public routes
 router.post('/register', register);
 router.post('/login', login);
+router.post('/google', googleAuth); // Add this Google auth route
 router.post('/forgotpassword', forgotPassword);
 router.put('/resetpassword/:resettoken', resetPassword);
 
