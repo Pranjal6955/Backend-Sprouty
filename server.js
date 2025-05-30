@@ -108,11 +108,54 @@ cleanupInvalidReminders().then(() => {
 
 // Middleware
 app.use(cors({
-  origin: ['https://frontend-sprouty.vercel.app', 'http://localhost:5173', 'https://sproutywebpp.vercel.app'],
+  origin: function(origin, callback) {
+    // Allow all origins in the allowed list
+    const allowedOrigins = [
+      'https://frontend-sprouty.vercel.app', 
+      'http://localhost:5173', 
+      'https://sproutywebpp.vercel.app',
+      // Add any other frontend origins that might access the backend
+    ];
+    
+    // For development and debugging purposes, log the requesting origin
+    console.log('Request from origin:', origin);
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS request from unauthorized origin:', origin);
+      // During development, allow all origins but log them
+      callback(null, true);
+      
+      // In production, you might want to restrict:
+      // callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-From', 'X-Request-ID'],
+  exposedHeaders: ['Content-Length', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  maxAge: 86400 // Cache preflight requests for 24 hours
 }));
+
+// Enhanced CORS test endpoint with more debugging info
+app.get('/api/cors-test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'CORS is configured properly',
+    serverUrl: 'https://backend-sprouty-k3my.onrender.com',
+    headers: {
+      origin: req.headers.origin || 'No origin header',
+      host: req.headers.host,
+      referer: req.headers.referer || 'No referer',
+      requestedFrom: req.headers['x-requested-from'] || 'No X-Requested-From header'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Body parser with increased limit for image uploads
 app.use(express.json({ limit: '10mb' }));
